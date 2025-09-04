@@ -3,3 +3,4 @@ wordcloud
 matplotlib
 spacy
 pycryptodome
+pt_core_news_sm
