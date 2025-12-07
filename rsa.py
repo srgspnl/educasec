@@ -269,13 +269,43 @@ def app():
         st.header("🔓 Descriptografar Mensagem")
         st.write("Use esta seção para descriptografar uma mensagem usando uma chave privada.")
         
-        st.subheader("1️⃣ Cole a Chave Privada")
-        private_key_input = st.text_area(
-            "Chave Privada (formato PEM):",
-            height=200,
-            placeholder="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+        # Escolha do tipo de chave
+        st.subheader("1️⃣ Escolha a Chave Privada")
+        
+        opcao_chave = st.radio(
+            "Qual chave privada você deseja usar?",
+            ["🔑 Usar chave gerada nesta sessão", "📋 Colar minha própria chave privada"],
+            help="Escolha se quer usar a chave gerada na Tab 'Gerar & Criptografar' ou se tem uma chave própria"
         )
         
+        private_key_to_use = None
+        
+        if opcao_chave == "🔑 Usar chave gerada nesta sessão":
+            if 'private_key_pem' in st.session_state:
+                st.success("✅ Usando a chave privada gerada nesta sessão.")
+                private_key_to_use = st.session_state['private_key_pem']
+                
+                with st.expander("🔍 Ver chave privada atual"):
+                    st.code(st.session_state['private_key_pem'], language="text")
+            else:
+                st.warning("⚠️ Nenhuma chave foi gerada nesta sessão. Por favor, vá para a Tab 'Gerar & Criptografar' e gere um par de chaves primeiro, ou escolha a opção de colar sua própria chave.")
+        
+        else:  # Colar própria chave
+            private_key_input = st.text_area(
+                "Cole sua Chave Privada (formato PEM):",
+                height=200,
+                placeholder="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+            )
+            
+            if private_key_input:
+                private_key_to_use = private_key_input
+                st.success("✅ Chave privada fornecida.")
+            else:
+                st.info("👆 Cole sua chave privada no campo acima.")
+        
+        st.markdown("---")
+        
+        # Mensagem criptografada
         st.subheader("2️⃣ Cole a Mensagem Criptografada")
         ciphertext_input = st.text_area(
             "Mensagem Criptografada (Base64):",
@@ -283,33 +313,39 @@ def app():
             placeholder="Cole aqui a mensagem criptografada em Base64..."
         )
         
+        # Botão de descriptografar
         if st.button("🔓 Descriptografar", type="primary"):
-            if not private_key_input:
-                st.error("❌ Por favor, cole a chave privada.")
+            if not private_key_to_use:
+                st.error("❌ Por favor, selecione ou cole uma chave privada.")
             elif not ciphertext_input:
                 st.error("❌ Por favor, cole a mensagem criptografada.")
             else:
                 try:
-                    decrypted = decrypt_message(private_key_input, ciphertext_input)
+                    decrypted = decrypt_message(private_key_to_use, ciphertext_input)
                     
                     st.success("✅ Mensagem descriptografada com sucesso!")
                     st.subheader("📄 Texto Original")
                     st.code(decrypted, language="text")
                     
-                    if st.button("📋 Copiar Texto Descriptografado"):
-                        st.toast("✅ Texto descriptografado copiado!", icon="📋")
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        if st.button("📋 Copiar Texto"):
+                            st.toast("✅ Texto descriptografado copiado!", icon="📋")
+                    with col2:
+                        st.metric("Tamanho do Texto", f"{len(decrypted)} caracteres")
                     
                 except ValueError as e:
                     st.error("❌ Chave privada inválida ou mensagem corrompida.")
                 except Exception as e:
-                    st.error(f"❌ Erro ao descriptografar: {str(e)}")
+                    st.error(f"❌ Erro ao descriptografar: {str(e)}\n\nVerifique se a chave privada corresponde à chave pública usada para criptografar a mensagem.")
         
         st.markdown("---")
         st.info("""
-        💡 **Dica**: Esta seção é útil quando você:
-        - Recebe uma mensagem criptografada de outra pessoa
-        - Quer descriptografar usando uma chave privada diferente
-        - Está testando mensagens de outras fontes
+        💡 **Dicas**: 
+        - Se você gerou a chave na Tab anterior, use a opção "Usar chave gerada"
+        - Se recebeu uma chave privada de outra fonte, use "Colar minha própria chave"
+        - A chave privada deve corresponder à chave pública usada na criptografia
+        - Mensagens criptografadas estão em formato Base64 para facilitar copiar/colar
         """)
 
 if __name__ == "__main__":
